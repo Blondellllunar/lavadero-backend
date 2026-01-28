@@ -110,6 +110,33 @@ app.post("/login", (req, res) => {
     res.json(row);
   });
 });
+// ==========================
+// CREAR USUARIO (TEMPORAL)
+// ==========================
+app.post("/crear-usuario", (req, res) => {
+  const { usuario, password, rol } = req.body;
+
+  if (!usuario || !password || !rol) {
+    return res.status(400).json({ message: "Datos incompletos" });
+  }
+
+  if (!["admin", "dia", "noche"].includes(rol)) {
+    return res.status(400).json({ message: "Rol inválido" });
+  }
+
+  const sql = `
+    INSERT INTO usuarios (usuario, password, rol, activo)
+    VALUES (?, ?, ?, 1)
+  `;
+
+  db.run(sql, [usuario, password, rol], function (err) {
+    if (err) {
+      return res.status(500).json({ message: "Usuario ya existe" });
+    }
+
+    res.json({ message: "Usuario creado correctamente" });
+  });
+});
 
 /* ==========================
    CREAR ADMIN (USAR 1 VEZ)
