@@ -1,11 +1,32 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const sqlite3 = require("sqlite3").verbose();
 const QRCode = require("qrcode");
-const db = require("./db");
-// ==========================
-// INICIALIZAR TABLAS SQLITE
-// ==========================
+
+const app = express();
+
+/* ==========================
+   MIDDLEWARES
+========================== */
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+/* ==========================
+   SQLITE DB (ARCHIVO REAL)
+========================== */
+const db = new sqlite3.Database("./database.sqlite", (err) => {
+  if (err) {
+    console.error("❌ Error SQLite:", err.message);
+  } else {
+    console.log("✅ SQLite conectado");
+  }
+});
+
+/* ==========================
+   CREAR TABLAS (UNA SOLA VEZ)
+========================== */
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -49,17 +70,8 @@ db.serialize(() => {
     )
   `);
 
-  console.log("✅ Tablas SQLite creadas/verificadas");
+  console.log("✅ Tablas SQLite listas");
 });
-
-const app = express();
-
-/* ==========================
-   MIDDLEWARES
-========================== */
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
 
 /* ==========================
    SERVIDOR OK
@@ -68,9 +80,9 @@ app.get("/", (req, res) => {
   res.send("Servidor funcionando ✅");
 });
 
-// ==========================
-// LOGIN (SQLITE)
-// ==========================
+/* ==========================
+   LOGIN (FUNCIONA)
+========================== */
 app.post("/login", (req, res) => {
   const { usuario, password } = req.body;
 
@@ -82,11 +94,12 @@ app.post("/login", (req, res) => {
     SELECT id, usuario, rol
     FROM usuarios
     WHERE usuario = ? AND password = ? AND activo = 1
+    LIMIT 1
   `;
 
   db.get(sql, [usuario, password], (err, row) => {
     if (err) {
-      console.error("❌ Error login:", err);
+      console.error("❌ Error login:", err.message);
       return res.status(500).json({ message: "Error servidor" });
     }
 
@@ -99,14 +112,33 @@ app.post("/login", (req, res) => {
 });
 
 /* ==========================
+   CREAR ADMIN (USAR 1 VEZ)
+========================== */
+app.get("/crear-admin", (req, res) => {
+  db.run(
+    `INSERT OR IGNORE INTO usuarios (usuario, password, rol, activo)
+     VALUES ('admin', '1234', 'admin', 1)`,
+    (err) => {
+      if (err) {
+        return res.json({ error: err.message });
+      }
+
+      res.json({
+        message: "Admin creado",
+        usuario: "admin",
+        password: "1234"
+      });
+    }
+  );
+});
+
+/* ==========================
    LAVADORES
 ========================== */
-
-// Obtener lavadores
 app.get("/lavadores", (req, res) => {
   const turno = req.query.turno;
 
-  let sql = "SELECT id, nombre, turno FROM lavadores";
+  let sql = "SELECT * FROM lavadores";
   const params = [];
 
   if (turno && turno !== "admin") {
@@ -114,367 +146,117 @@ app.get("/lavadores", (req, res) => {
     params.push(turno);
   }
 
-  db.query(sql, params, (err, rows) => {
+  db.all(sql, params, (err, rows) => {
     if (err) {
-      console.error("❌ Error lavadores:", err);
       return res.status(500).json({ message: "Error lavadores" });
     }
     res.json(rows);
   });
 });
 
-// Crear lavador
 app.post("/lavadores", (req, res) => {
-  let { nombre, turno } = req.body;
-
-  nombre = nombre ? nombre.trim() : "";
-  turno = turno ? turno.trim() : "";
+  const { nombre, turno } = req.body;
 
   if (!nombre || !turno) {
     return res.status(400).json({ message: "Datos incompletos" });
   }
 
-  if (turno !== "dia" && turno !== "noche") {
-    return res.status(400).json({ message: "Turno inválido" });
-  }
-
-  const checkSql = `
-    SELECT id FROM lavadores
-    WHERE nombre = ? AND turno = ?
-    LIMIT 1
-  `;
-
-  db.query(checkSql, [nombre, turno], (err, rows) => {
-    if (err) {
-      console.error("❌ Error validando lavador:", err);
-      return res.status(500).json({ message: "Error servidor" });
-    }
-
-    if (rows.length > 0) {
-      return res.status(409).json({ message: "El lavador ya existe en ese turno" });
-    }
-
-    const insertSql = `
-      INSERT INTO lavadores (nombre, turno)
-      VALUES (?, ?)
-    `;
-
-    db.query(insertSql, [nombre, turno], (err, result) => {
+  db.run(
+    "INSERT INTO lavadores (nombre, turno) VALUES (?, ?)",
+    [nombre, turno],
+    function (err) {
       if (err) {
-        console.error("❌ Error creando lavador:", err);
         return res.status(500).json({ message: "Error creando lavador" });
       }
-
-      res.json({
-        message: "Lavador creado correctamente",
-        lavador: {
-          id: result.insertId,
-          nombre,
-          turno
-        }
-      });
-    });
-  });
-});
-
-// Generar QR de lavador
-app.get("/lavadores/:id/qr", (req, res) => {
-  const { id } = req.params;
-
-  const sql = "SELECT id, nombre FROM lavadores WHERE id = ?";
-
-  db.query(sql, [id], async (err, rows) => {
-    if (err || rows.length === 0) {
-      return res.status(404).json({ message: "Lavador no encontrado" });
-    }
-
-    const lavador = rows[0];
-    const url = `http://localhost:3000/aseo-qr.html?token=${lavador.id}`;
-
-    try {
-      const qr = await QRCode.toDataURL(url);
-      res.json({ qr, url });
-    } catch (e) {
-      console.error("❌ Error QR:", e);
-      res.status(500).json({ message: "Error generando QR" });
-    }
-  });
-});
-
-/* ==========================
-   ENTREGAS
-========================== */
-
-// Guardar entrega
-app.post("/entregas", (req, res) => {
-  let {
-    fecha,
-    turno,
-    lavador_id,
-    producto,
-    cantidad,
-    observacion,
-    registrado_por
-  } = req.body;
-
-  lavador_id = Number(lavador_id);
-  cantidad = Number(cantidad);
-  registrado_por = registrado_por ? Number(registrado_por) : null;
-
-  if (!fecha || !turno || !lavador_id || !producto || !cantidad) {
-    return res.status(400).json({ message: "Datos incompletos" });
-  }
-
-  if (turno !== "dia" && turno !== "noche") {
-    return res.status(400).json({ message: "Turno inválido" });
-  }
-
-  const hoy = new Date().toISOString().split("T")[0];
-  if (fecha > hoy) {
-    return res.status(400).json({ message: "No se permiten fechas futuras" });
-  }
-
-  const sql = `
-    INSERT INTO entregas
-    (fecha, turno, lavador_id, producto, cantidad, observacion, registrado_por)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(
-    sql,
-    [fecha, turno, lavador_id, producto, cantidad, observacion || null, registrado_por],
-    (err) => {
-      if (err) {
-        console.error("❌ Error guardando entrega:", err);
-        return res.status(500).json({ message: "Error guardando entrega" });
-      }
-
-      res.json({ message: "Entrega registrada correctamente" });
+      res.json({ id: this.lastID, nombre, turno });
     }
   );
 });
 
-// Historial de entregas
-app.get("/reporte-entregas", (req, res) => {
-  const { desde, hasta, turno } = req.query;
+/* ==========================
+   QR LAVADOR
+========================== */
+app.get("/lavadores/:id/qr", async (req, res) => {
+  const { id } = req.params;
 
-  let sql = `
-    SELECT
-      DATE_FORMAT(e.fecha, '%Y-%m-%d') AS fecha,
-      e.turno,
-      l.nombre AS lavador,
-      e.producto,
-      e.cantidad,
-      e.observacion
-    FROM entregas e
-    JOIN lavadores l ON e.lavador_id = l.id
-    WHERE 1=1
-  `;
-
-  const params = [];
-
-  if (desde) {
-    sql += " AND DATE(e.fecha) >= ?";
-    params.push(desde);
-  }
-
-  if (hasta) {
-    sql += " AND DATE(e.fecha) <= ?";
-    params.push(hasta);
-  }
-
-  if (turno) {
-    sql += " AND e.turno = ?";
-    params.push(turno);
-  }
-
-  sql += " ORDER BY e.fecha DESC";
-
-  db.query(sql, params, (err, rows) => {
-    if (err) {
-      console.error("❌ Error reporte entregas:", err);
-      return res.status(500).json({ message: "Error reporte entregas" });
+  db.get("SELECT * FROM lavadores WHERE id = ?", [id], async (err, row) => {
+    if (!row) {
+      return res.status(404).json({ message: "Lavador no encontrado" });
     }
 
-    res.json(rows);
+    const url = `${req.protocol}://${req.get("host")}/aseo-qr.html?lavador=${id}`;
+    const qr = await QRCode.toDataURL(url);
+
+    res.json({ qr, url });
   });
 });
 
 /* ==========================
-   ASEO
+   REGISTRAR ASEO
 ========================== */
-
-// Registrar aseo
 app.post("/aseo", (req, res) => {
-  const { fecha, turno, lavador_id, tareas, observacion } = req.body;
+  const { turno, lavador_id, tareas, observacion } = req.body;
 
   if (!turno || !lavador_id || !Array.isArray(tareas) || tareas.length === 0) {
     return res.status(400).json({ message: "Datos incompletos" });
   }
 
-  const sql = `
-    INSERT INTO aseo (fecha, turno, lavador_id, tareas, observacion)
-    VALUES (NOW(), ?, ?, ?, ?)
-  `;
+  const fecha = new Date().toISOString().split("T")[0];
 
-  db.query(
-    sql,
-    [turno, lavador_id, JSON.stringify(tareas), observacion || null],
+  db.run(
+    `INSERT INTO aseo (fecha, turno, lavador_id, tareas, observacion)
+     VALUES (?, ?, ?, ?, ?)`,
+    [fecha, turno, lavador_id, JSON.stringify(tareas), observacion || null],
     (err) => {
       if (err) {
-        console.error("❌ Error guardando aseo:", err);
         return res.status(500).json({ message: "Error guardando aseo" });
       }
-
-      res.json({ message: "Aseo registrado con éxito" });
+      res.json({ message: "Aseo registrado" });
     }
   );
 });
 
-// Historial de aseo
+/* ==========================
+   HISTORIAL ASEO
+========================== */
 app.get("/reporte-aseo", (req, res) => {
-  const { desde, hasta, turno, lavador_id } = req.query;
+  const { desde, hasta, turno } = req.query;
 
   let sql = `
-    SELECT
-      DATE_FORMAT(a.fecha, '%Y-%m-%d') AS fecha,
-      a.turno,
-      l.nombre AS lavador,
-      a.tareas,
-      a.observacion
+    SELECT a.fecha, a.turno, l.nombre AS lavador, a.tareas, a.observacion
     FROM aseo a
     JOIN lavadores l ON a.lavador_id = l.id
     WHERE 1=1
   `;
-
   const params = [];
 
   if (desde) {
-    sql += " AND DATE(a.fecha) >= ?";
+    sql += " AND a.fecha >= ?";
     params.push(desde);
   }
-
   if (hasta) {
-    sql += " AND DATE(a.fecha) <= ?";
+    sql += " AND a.fecha <= ?";
     params.push(hasta);
   }
-
   if (turno) {
     sql += " AND a.turno = ?";
     params.push(turno);
   }
 
-  if (lavador_id) {
-    sql += " AND l.id = ?";
-    params.push(lavador_id);
-  }
-
   sql += " ORDER BY a.fecha DESC";
 
-  db.query(sql, params, (err, rows) => {
+  db.all(sql, params, (err, rows) => {
     if (err) {
-      console.error("❌ Error reporte aseo:", err);
       return res.status(500).json({ message: "Error reporte aseo" });
     }
-
     res.json(rows);
   });
 });
-// ==========================
-// CREAR USUARIO ADMIN (UNA SOLA VEZ)
-// ==========================
-app.get("/crear-admin", (req, res) => {
-  const sql = `
-    INSERT OR IGNORE INTO usuarios (usuario, password, rol, activo)
-    VALUES ('admin', '1234', 'admin', 1)
-  `;
 
-  db.run(sql, function (err) {
-    if (err) {
-      return res.json({ error: err.message });
-    }
-
-    res.json({
-      message: "Admin listo",
-      usuario: "admin",
-      password: "1234"
-    });
-  });
-});
-app.get("/crear-admin", (req, res) => {
-  const sql = `
-    INSERT OR IGNORE INTO usuarios (usuario, password, rol, activo)
-    VALUES ('admin', '1234', 'admin', 1)
-  `;
-
-  db.run(sql, function (err) {
-    if (err) {
-      return res.json({ error: err.message });
-    }
-
-    res.json({
-      message: "Admin creado",
-      usuario: "admin",
-      password: "1234"
-    });
-  });
-});
-
-// ⬇️ ESTO YA EXISTE, NO LO BORRES
-app.listen(3000, () => {
-  console.log("🚀 Servidor en http://localhost:3000");
-});
-// ==========================
-// CREAR TABLAS SQLITE (SI NO EXISTEN)
-// ==========================
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      usuario TEXT UNIQUE,
-      password TEXT,
-      rol TEXT,
-      activo INTEGER
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS lavadores (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre TEXT,
-      turno TEXT
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS aseo (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      fecha TEXT,
-      turno TEXT,
-      lavador_id INTEGER,
-      tareas TEXT,
-      observacion TEXT
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS entregas (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      fecha TEXT,
-      turno TEXT,
-      lavador_id INTEGER,
-      producto TEXT,
-      cantidad INTEGER,
-      observacion TEXT,
-      registrado_por INTEGER
-    )
-  `);
-
-  console.log("✅ Tablas SQLite verificadas/creadas");
-});
 /* ==========================
    INICIAR SERVIDOR
 ========================== */
-app.listen(3000, () => {
-  console.log("🚀 Servidor activo");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor activo en puerto ${PORT}`);
 });
