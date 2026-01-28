@@ -68,9 +68,9 @@ app.get("/", (req, res) => {
   res.send("Servidor funcionando ✅");
 });
 
-/* ==========================
-   LOGIN
-========================== */
+// ==========================
+// LOGIN (SQLITE)
+// ==========================
 app.post("/login", (req, res) => {
   const { usuario, password } = req.body;
 
@@ -84,17 +84,17 @@ app.post("/login", (req, res) => {
     WHERE usuario = ? AND password = ? AND activo = 1
   `;
 
-  db.query(sql, [usuario, password], (err, rows) => {
+  db.get(sql, [usuario, password], (err, row) => {
     if (err) {
-      console.error("❌ Login error:", err);
+      console.error("❌ Error login:", err);
       return res.status(500).json({ message: "Error servidor" });
     }
 
-    if (rows.length === 0) {
+    if (!row) {
       return res.status(401).json({ message: "Usuario o contraseña incorrectos" });
     }
 
-    res.json(rows[0]);
+    res.json(row);
   });
 });
 
