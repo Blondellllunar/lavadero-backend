@@ -3,6 +3,54 @@ const cors = require("cors");
 const path = require("path");
 const QRCode = require("qrcode");
 const db = require("./db");
+// ==========================
+// INICIALIZAR TABLAS SQLITE
+// ==========================
+db.serialize(() => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario TEXT UNIQUE,
+      password TEXT,
+      rol TEXT,
+      activo INTEGER
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS lavadores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT,
+      turno TEXT
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS aseo (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fecha TEXT,
+      turno TEXT,
+      lavador_id INTEGER,
+      tareas TEXT,
+      observacion TEXT
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS entregas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fecha TEXT,
+      turno TEXT,
+      lavador_id INTEGER,
+      producto TEXT,
+      cantidad INTEGER,
+      observacion TEXT,
+      registrado_por INTEGER
+    )
+  `);
+
+  console.log("✅ Tablas SQLite creadas/verificadas");
+});
 
 const app = express();
 
@@ -353,6 +401,24 @@ app.get("/crear-admin", (req, res) => {
     });
   });
 });
+app.get("/crear-admin", (req, res) => {
+  const sql = `
+    INSERT OR IGNORE INTO usuarios (usuario, password, rol, activo)
+    VALUES ('admin', '1234', 'admin', 1)
+  `;
+
+  db.run(sql, function (err) {
+    if (err) {
+      return res.json({ error: err.message });
+    }
+
+    res.json({
+      message: "Admin creado",
+      usuario: "admin",
+      password: "1234"
+    });
+  });
+});
 
 // ⬇️ ESTO YA EXISTE, NO LO BORRES
 app.listen(3000, () => {
@@ -410,5 +476,5 @@ db.serialize(() => {
    INICIAR SERVIDOR
 ========================== */
 app.listen(3000, () => {
-  console.log("🚀 Servidor en http://localhost:3000");
+  console.log("🚀 Servidor activo");
 });
