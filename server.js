@@ -332,7 +332,29 @@ app.get("/reporte-aseo", (req, res) => {
     res.json(rows);
   });
 });
+// ⚠️ RUTA TEMPORAL PARA CREAR ADMIN
+app.get("/crear-admin", (req, res) => {
+  const sql = `
+    INSERT INTO usuarios (usuario, password, rol, activo)
+    VALUES ('admin', '1234', 'admin', 1)
+  `;
 
+  db.run(sql, function (err) {
+    if (err) {
+      return res.json({ error: err.message });
+    }
+    res.json({
+      message: "Usuario admin creado",
+      usuario: "admin",
+      password: "1234"
+    });
+  });
+});
+
+// ⬇️ ESTO YA EXISTE, NO LO BORRES
+app.listen(3000, () => {
+  console.log("🚀 Servidor en http://localhost:3000");
+});
 /* ==========================
    INICIAR SERVIDOR
 ========================== */
