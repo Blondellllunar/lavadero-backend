@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Entrega de Productos</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(135deg, #eef3f8, #f9fbfd);
+  margin: 0;
+}
+
+/* HEADER */
+header {
+  background: #1e88e5;
+  color: white;
+  padding: 18px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* ÁREA CENTRAL */
+main {
+  min-height: calc(100vh - 70px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* TARJETA */
+.container {
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  padding: 28px;
+  border-radius: 14px;
+  box-shadow: 0 14px 35px rgba(0,0,0,0.12);
+}
+
+/* TÍTULO */
+.container h2 {
+  text-align: center;
+  margin-bottom: 22px;
+  color: #333;
+}
+
+/* LABELS */
+label {
+  display: block;
+  margin-top: 14px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #444;
+}
+
+/* INPUTS */
+input, select, textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px;
+  font-size: 14px;
+  border-radius: 7px;
+  border: 1px solid #ccc;
+  transition: border .2s, box-shadow .2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #1e88e5;
+  box-shadow: 0 0 0 3px rgba(30,136,229,.15);
+}
+
+textarea {
+  resize: none;
+  min-height: 70px;
+}
+
+/* BOTÓN */
+button {
+  width: 100%;
+  margin-top: 22px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: bold;
+  background: #1e88e5;
+  color: white;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background .2s, transform .1s, box-shadow .1s;
+}
+
+button:hover {
+  background: #1565c0;
+  box-shadow: 0 6px 14px rgba(30,136,229,.3);
+}
+
+button:active {
+  transform: scale(.98);
+}
+
+/* MENSAJE */
+#mensaje {
+  display: none;
+  margin-top: 16px;
+  padding: 10px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 7px;
+  font-weight: bold;
+  text-align: center;
+  border: 1px solid #c8e6c9;
+}
+
+/* PANTALLAS BAJAS */
+@media (max-height: 700px) {
+  main {
+    align-items: flex-start;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>🧴 Entrega de Productos</header>
+
+<main>
+  <div class="container">
+
+    <h2>Registro de entrega</h2>
+
+    <label>Fecha</label>
+    <input type="date" id="fecha">
+
+    <label>Turno</label>
+<select id="turno">
+  <option value="">Seleccione</option>
+  <option value="dia">Día</option>
+  <option value="noche">Noche</option>
+</select>
+
+    <label>Lavador</label>
+    <select id="lavador"></select>
+
+    <label>Producto</label>
+    <select id="producto">
+      <option value="">Seleccione</option>
+      <option value="Silicona">Silicona</option>
+      <option value="Llantil">Llantil</option>
+    </select>
+
+    <label>Cantidad</label>
+    <input type="number" id="cantidad" min="1">
+
+    <label>Observación</label>
+    <textarea id="observacion" placeholder="Opcional"></textarea>
+
+    <button onclick="guardar()">Guardar entrega</button>
+
+    <div id="mensaje">✅ Entrega registrada con éxito</div>
+
+  </div>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const hoy = new Date().toISOString().split("T")[0];
+  document.getElementById("fecha").value = hoy;
+  document.getElementById("fecha").max = hoy;
+
+  const rol = localStorage.getItem("rol");
+
+  fetch(`http://localhost:3000/lavadores?turno=${rol}`)
+    .then(res => res.json())
+    .then(data => {
+      const sel = document.getElementById("lavador");
+      sel.innerHTML = `<option value="">Seleccione</option>`;
+      data.forEach(l => {
+        sel.innerHTML += `<option value="${l.id}">${l.nombre}</option>`;
+      });
+    });
+});
+
+function guardar() {
+  const fecha = document.getElementById("fecha").value;
+  const lavador_id = document.getElementById("lavador").value;
+  const producto = document.getElementById("producto").value;
+  const cantidad = document.getElementById("cantidad").value;
+  const observacion = document.getElementById("observacion").value;
+  
+  let turno = localStorage.getItem("rol"); // 👈 AQUÍ EMPIEZA LO IMPORTANTE
+  const registrado_por = localStorage.getItem("usuario_id");
+
+  // 🔒 SI ES ADMIN, DEBE ELEGIR TURNO
+  if (turno === "admin") {
+    turno = document.getElementById("turno").value;
+    if (!turno) {
+      alert("Seleccione el turno");
+      return;
+    }
+  }
+
+  // VALIDACIONES GENERALES
+  if (!fecha || !lavador_id || !producto || !cantidad) {
+    alert("Complete todos los campos");
+    return;
+  }
+
+  fetch("http://localhost:3000/entregas", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fecha,
+      turno,
+      lavador_id,
+      producto,
+      cantidad,
+      observacion,
+      registrado_por
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message);
+  })
+  .catch(() => {
+    alert("Error guardando entrega");
+  });
+}
+</script>
+
+</body>
+</html>

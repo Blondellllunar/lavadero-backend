@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Control de Aseo</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f4f6f8;
+  margin: 0;
+}
+header {
+  background: #1e88e5;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  font-size: 18px;
+}
+.container {
+  max-width: 500px;
+  margin: 20px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+label {
+  font-weight: bold;
+  margin-top: 10px;
+  display: block;
+}
+input, select, textarea, button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+button {
+  background: #1e88e5;
+  color: white;
+  border: none;
+  margin-top: 15px;
+  cursor: pointer;
+}
+.turno-box {
+  background: #e3f2fd;
+  padding: 8px;
+  border-radius: 5px;
+  margin-top: 5px;
+  text-align: center;
+  font-weight: bold;
+}
+.tareas {
+  margin-top: 10px;
+}
+.tareas label {
+  font-weight: normal;
+}
+</style>
+</head>
+
+<body>
+
+<header>Control de Aseo Diario</header>
+
+<div class="container">
+
+  <label>Fecha</label>
+  <input type="date" id="fecha">
+
+  <label>Turno</label>
+  <div id="turnoTexto" class="turno-box"></div>
+
+  <label>Lavador</label>
+  <select id="lavador"></select>
+
+  <label>Tarea realizada (solo UNA)</label>
+  <div class="tareas">
+    <label><input type="radio" name="tarea" value="Limpiar plancha"> Limpiar plancha</label>
+    <label><input type="radio" name="tarea" value="Barrer zona de secado"> Barrer zona de secado</label>
+    <label><input type="radio" name="tarea" value="Limpiar baño"> Limpiar baño</label>
+    <label><input type="radio" name="tarea" value="Aspiradoras"> Aspiradoras</label>
+    <label><input type="radio" name="tarea" value="Locker"> Locker</label>
+    <label><input type="radio" name="tarea" value="Cárcamos"> Cárcamos</label>
+  </div>
+
+  <label>Observación</label>
+  <textarea id="observacion" placeholder="Opcional"></textarea>
+
+  <button onclick="guardarAseo()">Guardar aseo</button>
+
+</div>
+
+<script>
+const rol = localStorage.getItem("rol");
+
+// 🔒 Seguridad
+if (rol !== "dia" && rol !== "noche") {
+  alert("Acceso no autorizado");
+  location.href = "login.html";
+}
+
+// 📅 Fecha hoy
+const fechaInput = document.getElementById("fecha");
+const hoy = new Date().toISOString().split("T")[0];
+fechaInput.value = hoy;
+fechaInput.max = hoy;
+
+// 🔁 Turno
+document.getElementById("turnoTexto").textContent = rol.toUpperCase();
+
+// 👷 Cargar lavadores
+fetch(`http://localhost:3000/lavadores?turno=${rol}`)
+  .then(r => r.json())
+  .then(data => {
+    const sel = document.getElementById("lavador");
+    sel.innerHTML = `<option value="">Seleccione lavador</option>`;
+    data.forEach(l => {
+      sel.innerHTML += `<option value="${l.id}">${l.nombre}</option>`;
+    });
+  });
+
+// 💾 Guardar aseo
+function guardarAseo() {
+  const lavador_id = document.getElementById("lavador").value;
+  const observacion = document.getElementById("observacion").value;
+  const tarea = document.querySelector("input[name='tarea']:checked");
+
+  if (!lavador_id) {
+    alert("Seleccione un lavador");
+    return;
+  }
+
+  if (!tarea) {
+    alert("Seleccione una tarea");
+    return;
+  }
+
+  fetch("http://localhost:3000/aseo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      turno: rol,
+      lavador_id,
+      tareas: [tarea.value],
+      observacion
+    })
+  })
+  .then(r => r.json())
+  .then(resp => {
+    alert(resp.message || "Aseo registrado");
+    document.querySelector("input[name='tarea']:checked").checked = false;
+    document.getElementById("observacion").value = "";
+  });
+}
+</script>
+
+</body>
+</html>

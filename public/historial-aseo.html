@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Aseo semanal por lavador</title>
+
+<style>
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f4f6f8;
+  margin: 0;
+}
+header {
+  background: #1e88e5;
+  color: white;
+  padding: 18px;
+  text-align: center;
+  font-size: 20px;
+}
+.container {
+  max-width: 1200px;
+  margin: 25px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+}
+.filtros {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+label {
+  font-size: 14px;
+  font-weight: 600;
+}
+input, select, button {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+button {
+  background: #1e88e5;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+.lavador-box {
+  margin-bottom: 30px;
+}
+.lavador-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #0d47a1;
+}
+.turno-dia {
+  color: #1565c0;
+}
+.turno-noche {
+  color: #5e35b1;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  border: 1px solid #eee;
+  padding: 8px;
+  text-align: center;
+}
+th {
+  background: #e3f2fd;
+}
+.vacio {
+  color: #aaa;
+  font-style: italic;
+}
+</style>
+</head>
+
+<body>
+
+<header>📅 Aseo semanal por lavador</header>
+
+<div class="container">
+
+  <div class="filtros">
+    <label>
+      Desde
+      <input type="date" id="desde">
+    </label>
+
+    <label>
+      Hasta
+      <input type="date" id="hasta">
+    </label>
+
+    <label>
+      Turno
+      <select id="turno">
+        <option value="">Todos</option>
+        <option value="dia">Día</option>
+        <option value="noche">Noche</option>
+      </select>
+    </label>
+
+    <button onclick="verSemana()">Semana actual</button>
+    <button onclick="cargar()">Ver</button>
+  </div>
+
+  <div id="contenido"></div>
+
+</div>
+
+<script>
+// 🔒 Solo admin
+if (localStorage.getItem("rol") !== "admin") {
+  location.href = "login.html";
+}
+
+// Helpers
+function formatearFechaCorta(fecha) {
+  const d = new Date(fecha);
+  const dias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  return `${dias[d.getDay()]} ${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+
+function rangoFechas(desde, hasta) {
+  const fechas = [];
+  let f = new Date(desde);
+  const fin = new Date(hasta);
+  while (f <= fin) {
+    fechas.push(new Date(f));
+    f.setDate(f.getDate() + 1);
+  }
+  return fechas;
+}
+
+// Cargar data
+function cargar() {
+  const desde = document.getElementById("desde").value;
+  const hasta = document.getElementById("hasta").value;
+  const turno = document.getElementById("turno").value;
+
+  if (!desde || !hasta) return;
+
+  let url = `http://localhost:3000/reporte-aseo?desde=${desde}&hasta=${hasta}`;
+  if (turno) url += `&turno=${turno}`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => render(data, desde, hasta));
+}
+
+// Render por lavador
+function render(data, desde, hasta) {
+  const cont = document.getElementById("contenido");
+  cont.innerHTML = "";
+
+  if (!data.length) {
+    cont.innerHTML = "<p>No hay registros en este turno / semana.</p>";
+    return;
+  }
+
+  const fechas = rangoFechas(desde, hasta);
+
+  // Agrupar por lavador
+  const porLavador = {};
+  data.forEach(r => {
+    if (!porLavador[r.lavador]) porLavador[r.lavador] = [];
+    porLavador[r.lavador].push(r);
+  });
+
+  Object.keys(porLavador).forEach(nombre => {
+    const registros = porLavador[nombre];
+    const turno = registros[0].turno;
+    const claseTurno = turno === "dia" ? "turno-dia" : "turno-noche";
+
+    let html = `
+      <div class="lavador-box">
+        <div class="lavador-title ${claseTurno}">
+          👷 ${nombre} (${turno})
+        </div>
+        <table>
+          <thead>
+            <tr>
+              ${fechas.map(f => `<th>${formatearFechaCorta(f)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              ${fechas.map(f => {
+                const dia = f.toISOString().split("T")[0];
+                const r = registros.find(x => x.fecha === dia);
+                if (!r) return `<td class="vacio">—</td>`;
+                const tareas = Array.isArray(r.tareas)
+                  ? r.tareas
+                  : JSON.parse(r.tareas || "[]");
+                return `<td>${tareas.join(", ")}</td>`;
+              }).join("")}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    cont.innerHTML += html;
+  });
+}
+
+// Semana actual (lunes a domingo)
+function verSemana() {
+  const hoy = new Date();
+  const dia = hoy.getDay() || 7;
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() - dia + 1);
+  const domingo = new Date(lunes);
+  domingo.setDate(lunes.getDate() + 6);
+
+  document.getElementById("desde").value = lunes.toISOString().split("T")[0];
+  document.getElementById("hasta").value = domingo.toISOString().split("T")[0];
+  cargar();
+}
+
+verSemana();
+</script>
+
+</body>
+</html>

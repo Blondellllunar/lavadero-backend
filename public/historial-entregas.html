@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Historial de Entregas</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f4f6f8;
+}
+header {
+  background: #1e88e5;
+  color: white;
+  padding: 15px;
+  text-align: center;
+}
+.container {
+  max-width: 95%;
+  margin: 20px auto;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: center;
+}
+th {
+  background: #e3f2fd;
+}
+.filtros {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+button {
+  background: #1e88e5;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<header>📦 Historial de Entregas</header>
+
+<div class="container">
+
+  <div class="filtros">
+    <label>Desde <input type="date" id="desde"></label>
+    <label>Hasta <input type="date" id="hasta"></label>
+    <button onclick="verSemana()">Últimos 7 días</button>
+    <button onclick="cargar()">Buscar</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Turno</th>
+        <th>Lavador</th>
+        <th>Producto</th>
+        <th>Cantidad</th>
+        <th>Observación</th>
+      </tr>
+    </thead>
+    <tbody id="tabla"></tbody>
+  </table>
+
+</div>
+
+<script>
+const rol = localStorage.getItem("rol");
+const tabla = document.getElementById("tabla");
+
+// 📅 FECHA SIN HORA
+function formatearFecha(fecha) {
+  const d = new Date(fecha);
+  return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+}
+
+function cargar() {
+  const desde = document.getElementById("desde").value;
+  const hasta = document.getElementById("hasta").value;
+
+  let url = "http://localhost:3000/reporte-entregas?";
+  if (desde) url += `desde=${desde}&`;
+  if (hasta) url += `hasta=${hasta}&`;
+  if (rol && (rol === "dia" || rol === "noche")) url += `turno=${rol}`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      tabla.innerHTML = "";
+
+      if (!data.length) {
+        tabla.innerHTML = `<tr><td colspan="6">Sin registros</td></tr>`;
+        return;
+      }
+
+      data.forEach(e => {
+        tabla.innerHTML += `
+          <tr>
+            <td>${formatearFecha(e.fecha)}</td>
+            <td>${e.turno}</td>
+            <td>${e.lavador}</td>
+            <td>${e.producto}</td>
+            <td>${e.cantidad}</td>
+            <td>${e.observacion || ""}</td>
+          </tr>
+        `;
+      });
+    });
+}
+
+function verSemana() {
+  const hoy = new Date();
+  const hace7 = new Date();
+  hace7.setDate(hoy.getDate() - 7);
+
+  document.getElementById("desde").value = hace7.toISOString().split("T")[0];
+  document.getElementById("hasta").value = hoy.toISOString().split("T")[0];
+  cargar();
+}
+
+verSemana();
+</script>
+
+</body>
+</html>

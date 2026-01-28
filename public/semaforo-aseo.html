@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Semáforo de Aseo</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f8;
+      margin: 0;
+    }
+    header {
+      background: #1e88e5;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 18px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+    .estado {
+      padding: 5px 10px;
+      border-radius: 5px;
+      color: white;
+      font-weight: bold;
+      font-size: 13px;
+    }
+    .verde { background: #2e7d32; }
+    .rojo { background: #c62828; }
+    .amarillo { background: #f9a825; color: black; }
+  </style>
+</head>
+<body>
+
+<header>
+  Semáforo de Aseo Diario
+</header>
+
+<div class="container" id="lista"></div>
+
+<script>
+/* ===============================
+   CONFIGURACIÓN
+   =============================== */
+
+// Simulación de login
+localStorage.setItem("rol", "dia"); // dia | noche | admin
+localStorage.setItem("tipo", "encargado"); // encargado | admin
+
+/* ===============================
+   DATOS
+   =============================== */
+
+const lavadores = [
+  { nombre: "Carlos", turno: "dia" },
+  { nombre: "Pedro", turno: "dia" },
+  { nombre: "Luis Eduardo", turno: "dia" },
+  { nombre: "Luis", turno: "dia" },
+  { nombre: "Derwin", turno: "dia" },
+  { nombre: "Javier", turno: "dia" },
+  { nombre: "Eduard", turno: "dia" },
+
+  { nombre: "Elenyier", turno: "noche" },
+  { nombre: "Emmanuel", turno: "noche" },
+  { nombre: "Henry", turno: "noche" },
+  { nombre: "Luis noche", turno: "noche" }
+];
+
+const registros = JSON.parse(localStorage.getItem("aseo")) || [];
+
+/* ===============================
+   SEMÁFORO
+   =============================== */
+
+const hoy = new Date().toISOString().split("T")[0];
+const rol = localStorage.getItem("rol");
+const tipo = localStorage.getItem("tipo");
+
+const lista = document.getElementById("lista");
+
+// Filtrar lavadores por turno
+const lavadoresTurno =
+  rol === "admin"
+    ? lavadores
+    : lavadores.filter(l => l.turno === rol);
+
+lavadoresTurno.forEach(l => {
+  const registro = registros.find(r =>
+    r.fecha === hoy &&
+    r.lavador === l.nombre &&
+    r.turno === l.turno
+  );
+
+  let estado = "rojo";
+  let texto = "NO REGISTRÓ";
+
+  if (registro) {
+    estado = "verde";
+    texto = "COMPLETO";
+  }
+
+  // AMARILLO: encargado ve incompleto
+  if (registro && registro.tareas.length < 1 && tipo !== "lavador") {
+    estado = "amarillo";
+    texto = "INCOMPLETO";
+  }
+
+  const div = document.createElement("div");
+  div.className = "item";
+
+  div.innerHTML = `
+    <span>${l.nombre}</span>
+    <span class="estado ${estado}">${texto}</span>
+  `;
+
+  lista.appendChild(div);
+});
+</script>
+
+</body>
+</html>

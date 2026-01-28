@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Lavadores - Admin</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #f4f6f8;
+}
+
+header {
+  background: #1e88e5;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  font-size: 18px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 30px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.1);
+}
+
+h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+form input, form select {
+  padding: 8px;
+  font-size: 14px;
+}
+
+form button {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+form button:hover {
+  background: #1b5e20;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+th {
+  background: #e3f2fd;
+  color: #0d47a1;
+  padding: 10px;
+  text-align: left;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+tr:hover {
+  background: #f9f9f9;
+}
+
+button.qr {
+  background: #1e88e5;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button.qr:hover {
+  background: #1565c0;
+}
+
+.qr-box {
+  margin-top: 30px;
+  display: none;
+  padding: 20px;
+  border-radius: 8px;
+  background: #fafafa;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.qr-box img {
+  max-width: 260px;
+  margin: 15px 0;
+}
+
+.qr-url {
+  font-size: 13px;
+  color: #555;
+  word-break: break-all;
+}
+
+.back {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.back button {
+  background: #e53935;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.back button:hover {
+  background: #c62828;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  👷 Lavadores & QR - Panel Admin
+</header>
+
+<div class="container">
+
+  <h2>➕ Crear nuevo lavador</h2>
+
+  <form onsubmit="crearLavador(event)">
+    <input type="text" id="nombre" placeholder="Nombre del lavador" required>
+    <select id="turno" required>
+      <option value="">Turno</option>
+      <option value="dia">Día</option>
+      <option value="noche">Noche</option>
+    </select>
+    <button type="submit">Crear</button>
+  </form>
+
+  <h2>Listado de Lavadores</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Turno</th>
+        <th>QR</th>
+      </tr>
+    </thead>
+    <tbody id="tabla"></tbody>
+  </table>
+
+  <div class="qr-box" id="qrBox">
+  <h3 id="qrNombre"></h3>
+  <img id="qrImg">
+  <p class="qr-url" id="qrUrl"></p>
+  <br>
+  <button onclick="imprimirQR()">🖨️ Imprimir QR</button>
+</div>
+
+  <div class="back">
+    <button onclick="volver()">⬅ Volver</button>
+  </div>
+
+</div>
+
+<script>
+// Seguridad
+if (localStorage.getItem("rol") !== "admin") {
+  window.location.href = "login.html";
+}
+
+const tabla = document.getElementById("tabla");
+const qrBox = document.getElementById("qrBox");
+const qrImg = document.getElementById("qrImg");
+const qrUrl = document.getElementById("qrUrl");
+
+function cargarLavadores() {
+  tabla.innerHTML = "";
+  fetch("http://localhost:3000/lavadores")
+    .then(r => r.json())
+    .then(data => {
+      data.forEach(l => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${l.nombre}</td>
+          <td>${l.turno.toUpperCase()}</td>
+          <td>
+            <button class="qr" onclick="verQR(${l.id}, '${l.nombre}')">Generar QR</button>
+          </td>
+        `;
+        tabla.appendChild(tr);
+      });
+    });
+}
+
+function crearLavador(e) {
+  e.preventDefault();
+
+  const nombre = document.getElementById("nombre").value.trim();
+  const turno = document.getElementById("turno").value;
+
+  fetch("http://localhost:3000/lavadores", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre, turno })
+  })
+  .then(r => r.json())
+  .then(() => {
+    document.getElementById("nombre").value = "";
+    document.getElementById("turno").value = "";
+    cargarLavadores();
+    alert("Lavador creado correctamente");
+  });
+}
+
+function verQR(id) {
+  fetch(`http://localhost:3000/lavadores/${id}/qr`)
+    .then(r => r.json())
+    .then(data => {
+      qrImg.src = data.qr;
+      qrUrl.textContent = data.url;
+      qrBox.style.display = "block";
+      qrBox.scrollIntoView({ behavior: "smooth" });
+    });
+}
+
+function volver() {
+  window.location.href = "dashboard-admin.html";
+}
+
+// Inicial
+cargarLavadores();
+</script>
+<script>
+let qrActual = null;
+
+function verQR(id, nombre) {
+  fetch(`http://localhost:3000/lavadores/${id}/qr`)
+    .then(r => r.json())
+    .then(data => {
+      qrActual = data;
+      qrActual.nombre = nombre; // 👈 guardamos el nombre
+
+      qrImg.src = data.qr;
+      qrUrl.textContent = data.url;
+
+      document.getElementById("qrNombre").textContent =
+        "QR de: " + nombre;
+
+      qrBox.style.display = "block";
+      qrBox.scrollIntoView({ behavior: "smooth" });
+    });
+}
+
+function imprimirQR() {
+  if (!qrActual) {
+    alert("No hay QR para imprimir");
+    return;
+  }
+
+  const ventana = window.open("", "_blank");
+
+  ventana.document.write(`
+    <html>
+    <head>
+      <title>Imprimir QR</title>
+      <style>
+        body {
+          font-family: Arial;
+          text-align: center;
+          margin-top: 40px;
+        }
+        img {
+          max-width: 300px;
+          margin: 20px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <h2>${qrActual.nombre}</h2>
+<img src="${qrActual.qr}">
+<p>${qrActual.url}</p>
+      <script>
+        window.print();
+      <\/script>
+    </body>
+    </html>
+  `);
+
+  ventana.document.close();
+}
+</script>
+
+</body>
+</html>

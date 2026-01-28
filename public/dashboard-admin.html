@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel Admin - Lavadero</title>
+
+<style>
+:root {
+  --primary: #1e88e5;
+  --secondary: #42a5f5;
+  --bg: #f4f6f8;
+  --card: rgba(255,255,255,0.9);
+  --shadow: 0 10px 25px rgba(0,0,0,.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #e3f2fd, #f4f6f8);
+  min-height: 100vh;
+}
+
+/* HEADER */
+header {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  padding: 18px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  box-shadow: var(--shadow);
+}
+
+/* LOGOUT */
+.logout {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 20px;
+}
+
+.logout button {
+  background: #ef5350;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: .2s;
+}
+
+.logout button:hover {
+  background: #d32f2f;
+  transform: scale(1.05);
+}
+
+/* GRID */
+.container {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 20px;
+}
+
+/* CARDS */
+.card {
+  background: var(--card);
+  border-radius: 15px;
+  padding: 30px 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: .25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(30,136,229,.1));
+  opacity: 0;
+  transition: .25s;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card:hover {
+  transform: translateY(-6px) scale(1.03);
+}
+
+/* ICON */
+.icon {
+  font-size: 45px;
+  margin-bottom: 12px;
+}
+
+/* TEXT */
+.card span {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* ANIMATION */
+.card {
+  animation: aparecer .5s ease forwards;
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* MOBILE */
+@media (max-width: 480px) {
+  header {
+    font-size: 18px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>Panel de Control · ADMIN</header>
+
+<div class="logout">
+  <button onclick="cerrar()">Cerrar sesión</button>
+</div>
+
+<div class="container">
+
+  <div class="card" onclick="ir('lavadores-admin.html')">
+    <div class="icon">👷</div>
+    <span>Lavadores</span>
+  </div>
+
+  <div class="card" onclick="ir('entregas.html')">
+    <div class="icon">🧴</div>
+    <span>Entrega de Productos</span>
+  </div>
+
+  <div class="card" onclick="ir('control-aseo.html')">
+    <div class="icon">🧼</div>
+    <span>Control de Aseo</span>
+  </div>
+
+  <div class="card" onclick="ir('historial-aseo.html')">
+    <div class="icon">📋</div>
+    <span>Historial de Aseo</span>
+  </div>
+
+  <div class="card" onclick="ir('historial-entregas.html')">
+    <div class="icon">📦</div>
+    <span>Historial de Productos</span>
+  </div>
+
+</div>
+
+<script>
+if (localStorage.getItem("rol") !== "admin") {
+  window.location.href = "login.html";
+}
+
+function ir(pagina) {
+  window.location.href = pagina;
+}
+
+function cerrar() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+</script>
+
+</body>
+</html>

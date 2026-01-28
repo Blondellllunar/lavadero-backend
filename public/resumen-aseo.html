@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Resumen por Lavador</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f4f6f8;
+}
+header {
+  background: #1e88e5;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  font-size: 18px;
+}
+.container {
+  max-width: 900px;
+  margin: 20px auto;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: center;
+}
+th {
+  background: #e3f2fd;
+}
+.verde { color: green; font-weight: bold; }
+.amarillo { color: orange; font-weight: bold; }
+.rojo { color: red; font-weight: bold; }
+</style>
+</head>
+
+<body>
+
+<header>📊 Resumen de Aseo por Lavador</header>
+
+<div class="container">
+
+  <label>Desde:
+    <input type="date" id="desde">
+  </label>
+
+  <label>Hasta:
+    <input type="date" id="hasta">
+  </label>
+
+  <select id="turno">
+    <option value="">Todos</option>
+    <option value="dia">Día</option>
+    <option value="noche">Noche</option>
+  </select>
+
+  <button onclick="cargar()">Ver resumen</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Lavador</th>
+        <th>Turno</th>
+        <th>Días cumplidos</th>
+        <th>Días faltantes</th>
+        <th>% Cumplimiento</th>
+      </tr>
+    </thead>
+    <tbody id="tabla"></tbody>
+  </table>
+
+</div>
+
+<script>
+if (localStorage.getItem("rol") !== "admin") {
+  location.href = "login.html";
+}
+
+function cargar() {
+  const desde = document.getElementById("desde").value;
+  const hasta = document.getElementById("hasta").value;
+  const turno = document.getElementById("turno").value;
+
+  if (!desde || !hasta) {
+    alert("Seleccione rango de fechas");
+    return;
+  }
+
+  let url = `http://localhost:3000/resumen-aseo?desde=${desde}&hasta=${hasta}`;
+  if (turno) url += `&turno=${turno}`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      const tabla = document.getElementById("tabla");
+      tabla.innerHTML = "";
+
+      if (data.length === 0) {
+        tabla.innerHTML =
+          `<tr><td colspan="5">Sin datos</td></tr>`;
+        return;
+      }
+
+      data.forEach(r => {
+        let clase = "verde";
+        if (r.porcentaje < 80) clase = "amarillo";
+        if (r.porcentaje < 50) clase = "rojo";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.nombre}</td>
+          <td>${r.turno}</td>
+          <td>${r.cumplidos}</td>
+          <td>${r.faltantes}</td>
+          <td class="${clase}">${r.porcentaje}%</td>
+        `;
+        tabla.appendChild(tr);
+      });
+    });
+}
+</script>
+
+</body>
+</html>
