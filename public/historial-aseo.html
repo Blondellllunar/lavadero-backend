@@ -147,7 +147,7 @@ function cargar() {
 
   if (!desde || !hasta) return;
 
-  let url = `http://localhost:3000/reporte-aseo?desde=${desde}&hasta=${hasta}`;
+ let url = `/reporte-aseo?desde=${desde}&hasta=${hasta}`;
   if (turno) url += `&turno=${turno}`;
 
   fetch(url)
