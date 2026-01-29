@@ -202,7 +202,14 @@ app.get("/reporte-aseo", (req, res) => {
       res.status(500).json({ message: "Error reporte aseo" });
     });
 });
-
+app.get("/debug-usuarios", async (req, res) => {
+  try {
+    const result = await db.query("SELECT id, usuario, password, rol, activo FROM usuarios");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 /* ==========================
    INICIAR SERVIDOR
 ========================== */
