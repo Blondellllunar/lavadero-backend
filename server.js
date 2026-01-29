@@ -33,21 +33,21 @@ app.post("/login", (req, res) => {
   const sql = `
     SELECT id, usuario, rol
     FROM usuarios
-    WHERE usuario = ? AND password = ? AND activo = 1
+    WHERE usuario = $1 AND password = $2 AND activo = true
     LIMIT 1
   `;
 
-  db.query(sql, [usuario, password], (err, rows) => {
+  db.query(sql, [usuario, password], (err, result) => {
     if (err) {
       console.error("❌ Error login:", err);
       return res.status(500).json({ message: "Error servidor" });
     }
 
-    if (!rows.length) {
+    if (result.rows.length === 0) {
       return res.status(401).json({ message: "Usuario o contraseña incorrectos" });
     }
 
-    res.json(rows[0]);
+    res.json(result.rows[0]);
   });
 });
 
