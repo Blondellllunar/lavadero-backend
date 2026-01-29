@@ -245,20 +245,26 @@ function crearLavador(e) {
 function verQR(id, nombre) {
   fetch(`/lavadores/${id}/qr`)
     .then(r => {
-      if (!r.ok) throw new Error("Error generando QR");
+      if (!r.ok) throw new Error("No se pudo generar el QR");
       return r.json();
     })
     .then(data => {
-      qrActual = { ...data, nombre };
+      qrActual = data;
+      qrActual.nombre = nombre;
 
       qrImg.src = data.qr;
       qrUrl.textContent = data.url;
-      document.getElementById("qrNombre").textContent = "QR de: " + nombre;
+
+      document.getElementById("qrNombre").textContent =
+        "QR de: " + nombre;
 
       qrBox.style.display = "block";
       qrBox.scrollIntoView({ behavior: "smooth" });
     })
-    .catch(err => alert(err.message));
+    .catch(err => {
+      alert("Error generando QR");
+      console.error(err);
+    });
 }
 
 // 🖨️ Imprimir QR

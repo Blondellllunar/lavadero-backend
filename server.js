@@ -107,30 +107,19 @@ app.post("/lavadores", (req, res) => {
 /* ==========================
    GENERAR QR DE LAVADOR
 ========================== */
-app.get("/lavadores/:id/qr", async (req, res) => {
+app.get("/lavadores/:id", async (req, res) => {
   const { id } = req.params;
 
-  try {
-    const result = await db.query(
-      "SELECT id, nombre, turno FROM lavadores WHERE id = $1",
-      [id]
-    );
+  const result = await db.query(
+    "SELECT id, nombre, turno FROM lavadores WHERE id = $1",
+    [id]
+  );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Lavador no encontrado" });
-    }
-
-    const lavador = result.rows[0];
-
-    const url = `${req.protocol}://${req.get("host")}/aseo-qr.html?lavador=${lavador.id}`;
-    const qr = await QRCode.toDataURL(url);
-
-    res.json({ qr, url });
-
-  } catch (err) {
-    console.error("❌ Error generando QR:", err);
-    res.status(500).json({ message: "Error generando QR" });
+  if (result.rows.length === 0) {
+    return res.status(404).json({ message: "Lavador no encontrado" });
   }
+
+  res.json(result.rows[0]);
 });
 /* ==========================
    REGISTRAR ASEO (CON CONTROL)
