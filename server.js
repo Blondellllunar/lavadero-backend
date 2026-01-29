@@ -2,8 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const QRCode = require("qrcode");
-const db = require("./db"); // 👈 MYSQL
-db.query("...");
+const db = require("./db"); // PostgreSQL pool
+
 const app = express();
 
 /* ==========================
@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 /* ==========================
-   SERVIDOR OK
+   TEST SERVER
 ========================== */
 app.get("/", (req, res) => {
   res.send("Servidor funcionando ✅");
@@ -33,44 +33,48 @@ app.post("/login", (req, res) => {
   const sql = `
     SELECT id, usuario, rol
     FROM usuarios
-    WHERE usuario = $1 AND password = $2 AND activo = true
+    WHERE usuario = $1
+      AND password = $2
+      AND activo = true
     LIMIT 1
   `;
 
-  db.query(sql, [usuario, password], (err, result) => {
-    if (err) {
+  db.query(sql, [usuario, password])
+    .then(result => {
+      if (result.rows.length === 0) {
+        return res
+          .status(401)
+          .json({ message: "Usuario o contraseña incorrectos" });
+      }
+
+      res.json(result.rows[0]);
+    })
+    .catch(err => {
       console.error("❌ Error login:", err);
-      return res.status(500).json({ message: "Error servidor" });
-    }
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ message: "Usuario o contraseña incorrectos" });
-    }
-
-    res.json(result.rows[0]);
-  });
+      res.status(500).json({ message: "Error servidor" });
+    });
 });
 
 /* ==========================
    LAVADORES
 ========================== */
 app.get("/lavadores", (req, res) => {
-  const turno = req.query.turno;
+  const { turno } = req.query;
 
   let sql = "SELECT * FROM lavadores";
   const params = [];
 
   if (turno && turno !== "admin") {
-    sql += " WHERE turno = ?";
+    sql += " WHERE turno = $1";
     params.push(turno);
   }
 
-  db.query(sql, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ message: "Error lavadores" });
-    }
-    res.json(rows);
-  });
+  db.query(sql, params)
+    .then(result => res.json(result.rows))
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ message: "Error lavadores" });
+    });
 });
 
 app.post("/lavadores", (req, res) => {
@@ -80,16 +84,24 @@ app.post("/lavadores", (req, res) => {
     return res.status(400).json({ message: "Datos incompletos" });
   }
 
-  db.query(
-    "INSERT INTO lavadores (nombre, turno) VALUES (?, ?)",
-    [nombre, turno],
-    (err, result) => {
-      if (err) {
-        return res.status(500).json({ message: "Error creando lavador" });
-      }
-      res.json({ id: result.insertId, nombre, turno });
-    }
-  );
+  const sql = `
+    INSERT INTO lavadores (nombre, turno)
+    VALUES ($1, $2)
+    RETURNING id
+  `;
+
+  db.query(sql, [nombre, turno])
+    .then(result => {
+      res.json({
+        id: result.rows[0].id,
+        nombre,
+        turno
+      });
+    })
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ message: "Error creando lavador" });
+    });
 });
 
 /* ==========================
@@ -98,8 +110,13 @@ app.post("/lavadores", (req, res) => {
 app.get("/lavadores/:id/qr", async (req, res) => {
   const { id } = req.params;
 
-  db.query("SELECT * FROM lavadores WHERE id = ?", [id], async (err, rows) => {
-    if (!rows.length) {
+  try {
+    const result = await db.query(
+      "SELECT * FROM lavadores WHERE id = $1",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "Lavador no encontrado" });
     }
 
@@ -107,7 +124,10 @@ app.get("/lavadores/:id/qr", async (req, res) => {
     const qr = await QRCode.toDataURL(url);
 
     res.json({ qr, url });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error QR" });
+  }
 });
 
 /* ==========================
@@ -122,17 +142,23 @@ app.post("/aseo", (req, res) => {
 
   const fecha = new Date().toISOString().split("T")[0];
 
-  db.query(
-    `INSERT INTO aseo (fecha, turno, lavador_id, tareas, observacion)
-     VALUES (?, ?, ?, ?, ?)`,
-    [fecha, turno, lavador_id, JSON.stringify(tareas), observacion || null],
-    (err) => {
-      if (err) {
-        return res.status(500).json({ message: "Error guardando aseo" });
-      }
-      res.json({ message: "Aseo registrado" });
-    }
-  );
+  const sql = `
+    INSERT INTO aseo (fecha, turno, lavador_id, tareas, observacion)
+    VALUES ($1, $2, $3, $4, $5)
+  `;
+
+  db.query(sql, [
+    fecha,
+    turno,
+    lavador_id,
+    JSON.stringify(tareas),
+    observacion || null
+  ])
+    .then(() => res.json({ message: "Aseo registrado" }))
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ message: "Error guardando aseo" });
+    });
 });
 
 /* ==========================
@@ -142,7 +168,12 @@ app.get("/reporte-aseo", (req, res) => {
   const { desde, hasta, turno } = req.query;
 
   let sql = `
-    SELECT a.fecha, a.turno, l.nombre AS lavador, a.tareas, a.observacion
+    SELECT
+      a.fecha,
+      a.turno,
+      l.nombre AS lavador,
+      a.tareas,
+      a.observacion
     FROM aseo a
     JOIN lavadores l ON a.lavador_id = l.id
     WHERE 1=1
@@ -150,26 +181,26 @@ app.get("/reporte-aseo", (req, res) => {
   const params = [];
 
   if (desde) {
-    sql += " AND a.fecha >= ?";
     params.push(desde);
+    sql += ` AND a.fecha >= $${params.length}`;
   }
   if (hasta) {
-    sql += " AND a.fecha <= ?";
     params.push(hasta);
+    sql += ` AND a.fecha <= $${params.length}`;
   }
   if (turno) {
-    sql += " AND a.turno = ?";
     params.push(turno);
+    sql += ` AND a.turno = $${params.length}`;
   }
 
   sql += " ORDER BY a.fecha DESC";
 
-  db.query(sql, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ message: "Error reporte aseo" });
-    }
-    res.json(rows);
-  });
+  db.query(sql, params)
+    .then(result => res.json(result.rows))
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ message: "Error reporte aseo" });
+    });
 });
 
 /* ==========================
