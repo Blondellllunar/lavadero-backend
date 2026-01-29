@@ -107,26 +107,20 @@ app.post("/lavadores", (req, res) => {
 /* ==========================
    QR LAVADOR
 ========================== */
-app.get("/lavadores/:id/qr", async (req, res) => {
-  const { id } = req.params;
-
+app.get("/lavadores/:id", async (req, res) => {
   try {
     const result = await db.query(
-      "SELECT * FROM lavadores WHERE id = $1",
-      [id]
+      "SELECT id, nombre, turno FROM lavadores WHERE id = $1",
+      [req.params.id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Lavador no encontrado" });
     }
 
-    const url = `${req.protocol}://${req.get("host")}/aseo-qr.html?lavador=${id}`;
-    const qr = await QRCode.toDataURL(url);
-
-    res.json({ qr, url });
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error QR" });
+    res.status(500).json({ message: "Error obteniendo lavador" });
   }
 });
 

@@ -56,17 +56,17 @@ button {
 
 <script>
 const params = new URLSearchParams(window.location.search);
-const token = params.get("token");
+const lavadorId = params.get("lavador");
 
-if (!token) {
+if (!lavadorId) {
   document.body.innerHTML = "❌ QR inválido";
   throw new Error("QR inválido");
 }
 
-// 🔹 Obtener info del lavador desde el QR
-fetch(`/aseo/qr/${token}`)
+// 🔹 Obtener info del lavador
+fetch(`/lavadores/${lavadorId}`)
   .then(res => {
-    if (!res.ok) throw new Error("QR no válido");
+    if (!res.ok) throw new Error("Lavador no encontrado");
     return res.json();
   })
   .then(lavador => {
@@ -78,7 +78,6 @@ fetch(`/aseo/qr/${token}`)
     document.body.innerHTML = "❌ Error cargando el QR";
     console.error(err);
   });
-
 // 🔹 Enviar aseo
 document.getElementById("formAseo").addEventListener("submit", e => {
   e.preventDefault();
