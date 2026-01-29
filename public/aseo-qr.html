@@ -59,42 +59,55 @@ const params = new URLSearchParams(window.location.search);
 const token = params.get("token");
 
 if (!token) {
-  document.body.innerHTML = "QR inválido";
-  throw new Error();
+  document.body.innerHTML = "❌ QR inválido";
+  throw new Error("QR inválido");
 }
 
-fetch(`http://localhost:3000/aseo/qr/${token}`)
-  .then(res => res.json())
+// 🔹 Obtener info del lavador desde el QR
+fetch(`/aseo/qr/${token}`)
+  .then(res => {
+    if (!res.ok) throw new Error("QR no válido");
+    return res.json();
+  })
   .then(lavador => {
     document.getElementById("nombre").textContent = lavador.nombre;
     document.getElementById("turno").textContent = "Turno: " + lavador.turno;
     window.lavador = lavador;
+  })
+  .catch(err => {
+    document.body.innerHTML = "❌ Error cargando el QR";
+    console.error(err);
   });
 
+// 🔹 Enviar aseo
 document.getElementById("formAseo").addEventListener("submit", e => {
   e.preventDefault();
 
   const tarea = document.querySelector("input[name=tarea]:checked");
   if (!tarea) return alert("Seleccione una tarea");
 
-  fetch("http://localhost:3000/aseo", {
+  fetch("/aseo", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       turno: window.lavador.turno,
       lavador_id: window.lavador.id,
       tareas: [tarea.value],
-      registrado_por: null
+      observacion: null
     })
   })
   .then(r => r.json())
   .then(d => {
-    if (d.message.includes("éxito")) {
+    if (d.message && d.message.toLowerCase().includes("registrado")) {
       document.getElementById("mensajeExito").style.display = "block";
       document.querySelectorAll("input[name=tarea]").forEach(r => r.checked = false);
     } else {
-      alert(d.message);
+      alert(d.message || "Error registrando aseo");
     }
+  })
+  .catch(err => {
+    alert("Error enviando aseo");
+    console.error(err);
   });
 });
 </script>
