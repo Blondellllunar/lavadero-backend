@@ -59,9 +59,11 @@
 
 <script>
 function login() {
-  const usuario = document.getElementById("usuario").value;
-  const password = document.getElementById("password").value;
+  const usuario = document.getElementById("usuario").value.trim();
+  const password = document.getElementById("password").value.trim();
   const error = document.getElementById("error");
+
+  error.textContent = "";
 
   if (!usuario || !password) {
     error.textContent = "Complete todos los campos";
@@ -73,24 +75,22 @@ function login() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ usuario, password })
   })
-  .then(res => {
-    if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
-    return res.json();
+  .then(async res => {
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Error de login");
+    return data;
   })
   .then(data => {
     localStorage.setItem("usuario", JSON.stringify(data));
     localStorage.setItem("rol", data.rol);
     localStorage.setItem("usuario_id", data.id);
 
-    // Redirección según rol
     if (data.rol === "admin") {
       window.location.href = "dashboard-admin.html";
     } else if (data.rol === "dia") {
       window.location.href = "dashboard-dia.html";
     } else if (data.rol === "noche") {
       window.location.href = "dashboard-noche.html";
-    } else {
-      window.location.href = "dashboard.html";
     }
   })
   .catch(err => {
