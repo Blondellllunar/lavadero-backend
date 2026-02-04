@@ -122,7 +122,7 @@ app.get("/lavadores/:id/qr", async (req, res) => {
 
     // URL pública del backend (Render)
     const BASE_URL =
-      process.env.BASE_URL || "https://lavadero-backend-ibol.onrender.com";
+  process.env.BASE_URL || "https://lavadero-backend-lbol.onrender.com";
 
     const url = `${BASE_URL}/aseo-qr.html?lavador=${id}`;
 
