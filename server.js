@@ -107,20 +107,38 @@ app.post("/lavadores", (req, res) => {
 /* ==========================
    GENERAR QR DE LAVADOR
 ========================== */
-app.get("/lavadores/:id", async (req, res) => {
+
+app.get("/lavadores/:id/qr", async (req, res) => {
   const { id } = req.params;
+  try {
+    const result = await db.query(
+      "SELECT id, nombre FROM lavadores WHERE id = $1",
+      [id]
+    );
 
-  const result = await db.query(
-    "SELECT id, nombre, turno FROM lavadores WHERE id = $1",
-    [id]
-  );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Lavador no encontrado" });
+    }
 
-  if (result.rows.length === 0) {
-    return res.status(404).json({ message: "Lavador no encontrado" });
+    // URL pública del backend (Render)
+    const BASE_URL =
+      process.env.BASE_URL || "https://lavadero-backend-ibol.onrender.com";
+
+    const url = `${BASE_URL}/aseo-qr.html?lavador=${id}`;
+
+    const qr = await QRCode.toDataURL(url);
+
+    res.json({
+      qr,
+      url
+    });
+
+  } catch (err) {
+    console.error("❌ Error generando QR:", err);
+    res.status(500).json({ message: "No se pudo generar el QR" });
   }
-
-  res.json(result.rows[0]);
 });
+
 /* ==========================
    REGISTRAR ASEO (CON CONTROL)
 ========================== */
