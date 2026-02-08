@@ -204,13 +204,18 @@ function cargarLavadores() {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${l.nombre}</td>
-          <td>${l.turno.toUpperCase()}</td>
-          <td>
-            <button class="qr" onclick="verQR(${l.id}, '${l.nombre}')">
-              Generar QR
-            </button>
-          </td>
-        `;
+  <td>${l.turno.toUpperCase()}</td>
+  <td>
+    <button class="qr" onclick="verQR(${l.id}, '${l.nombre}')">
+      QR
+    </button>
+
+    <button onclick="eliminarLavador(${l.id}, '${l.nombre}')" 
+            style="background:#e53935;color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;">
+      Eliminar
+    </button>
+  </td>
+`;
         tabla.appendChild(tr);
       });
     });
@@ -299,7 +304,25 @@ function imprimirQR() {
 function volver() {
   window.location.href = "dashboard-admin.html";
 }
+function eliminarLavador(id, nombre) {
 
+  if (!confirm("¿Seguro que quieres eliminar a " + nombre + "?")) {
+    return;
+  }
+
+  fetch(`/lavadores/${id}`, {
+    method: "DELETE"
+  })
+  .then(r => {
+    if (!r.ok) throw new Error("Error eliminando");
+    return r.json();
+  })
+  .then(() => {
+    alert("Lavador eliminado");
+    cargarLavadores();
+  })
+  .catch(err => alert(err.message));
+}
 // 🚀 Init
 cargarLavadores();
 </script>

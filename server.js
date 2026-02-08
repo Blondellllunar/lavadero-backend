@@ -103,6 +103,29 @@ app.post("/lavadores", (req, res) => {
       res.status(500).json({ message: "Error creando lavador" });
     });
 });
+/* ==========================
+   ELIMINAR LAVADOR
+========================== */
+app.delete("/lavadores/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await db.query(
+      "DELETE FROM lavadores WHERE id = $1 RETURNING id",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Lavador no encontrado" });
+    }
+
+    res.json({ message: "Lavador eliminado correctamente" });
+
+  } catch (err) {
+    console.error("❌ Error eliminando lavador:", err);
+    res.status(500).json({ message: "Error eliminando lavador" });
+  }
+});
 
 /* ==========================
    GENERAR QR DE LAVADOR
@@ -230,6 +253,7 @@ app.get("/debug-usuarios", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 /* ==========================
    INICIAR SERVIDOR
 ========================== */
