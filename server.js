@@ -344,6 +344,29 @@ app.get("/reporte-entregas", async (req, res) => {
   }
 });
 /* ==========================
+   ELIMINAR LAVADOR
+========================== */
+app.delete("/lavadores/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // borrar aseos del lavador
+    await db.query("DELETE FROM aseo WHERE lavador_id = $1", [id]);
+
+    // borrar entregas del lavador
+    await db.query("DELETE FROM entregas WHERE lavador_id = $1", [id]);
+
+    // borrar lavador
+    await db.query("DELETE FROM lavadores WHERE id = $1", [id]);
+
+    res.json({ message: "Lavador eliminado correctamente" });
+
+  } catch (err) {
+    console.error("Error eliminando lavador:", err);
+    res.status(500).json({ message: "Error eliminando" });
+  }
+});
+/* ==========================
    INICIAR SERVIDOR
 ========================== */
 const PORT = process.env.PORT || 3000;
