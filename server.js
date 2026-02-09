@@ -298,6 +298,52 @@ app.post("/entregas", async (req, res) => {
   }
 });
 /* ==========================
+   HISTORIAL DE ENTREGAS
+========================== */
+app.get("/reporte-entregas", async (req, res) => {
+  const { desde, hasta, turno } = req.query;
+
+  let sql = `
+    SELECT
+      e.fecha,
+      e.turno,
+      l.nombre AS lavador,
+      e.producto,
+      e.cantidad,
+      e.observacion
+    FROM entregas e
+    JOIN lavadores l ON e.lavador_id = l.id
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (desde) {
+    params.push(desde);
+    sql += ` AND e.fecha >= $${params.length}`;
+  }
+
+  if (hasta) {
+    params.push(hasta);
+    sql += ` AND e.fecha <= $${params.length}`;
+  }
+
+  if (turno) {
+    params.push(turno);
+    sql += ` AND e.turno = $${params.length}`;
+  }
+
+  sql += " ORDER BY e.fecha DESC";
+
+  try {
+    const result = await db.query(sql, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error reporte entregas:", err);
+    res.status(500).json({ message: "Error cargando historial" });
+  }
+});
+/* ==========================
    INICIAR SERVIDOR
 ========================== */
 const PORT = process.env.PORT || 3000;
