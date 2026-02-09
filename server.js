@@ -350,20 +350,17 @@ app.delete("/lavadores/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 1️⃣ borrar aseos del lavador
+    // borrar aseos primero
     await db.query("DELETE FROM aseo WHERE lavador_id = $1", [id]);
 
-    // 2️⃣ borrar entregas del lavador (si usas entregas)
-    await db.query("DELETE FROM entregas WHERE lavador_id = $1", [id]);
-
-    // 3️⃣ borrar lavador
+    // luego borrar lavador
     await db.query("DELETE FROM lavadores WHERE id = $1", [id]);
 
-    res.json({ message: "Lavador eliminado correctamente" });
+    res.json({ message: "Lavador eliminado" });
 
   } catch (err) {
-    console.error("Error eliminando lavador:", err);
-    res.status(500).json({ message: "Error eliminando lavador" });
+    console.error("❌ Error eliminando lavador:", err);
+    res.status(500).json({ message: "Error eliminando" });
   }
 });
 /* ==========================
