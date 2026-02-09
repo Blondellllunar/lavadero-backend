@@ -255,6 +255,49 @@ app.get("/debug-usuarios", async (req, res) => {
 });
 
 /* ==========================
+   REGISTRAR ENTREGA
+========================== */
+app.post("/entregas", async (req, res) => {
+  const {
+    fecha,
+    turno,
+    lavador_id,
+    producto,
+    cantidad,
+    observacion,
+    registrado_por
+  } = req.body;
+
+  if (!fecha || !turno || !lavador_id || !producto || !cantidad) {
+    return res.status(400).json({ message: "Datos incompletos" });
+  }
+
+  try {
+    await db.query(
+      `
+      INSERT INTO entregas
+      (fecha, turno, lavador_id, producto, cantidad, observacion, registrado_por)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `,
+      [
+        fecha,
+        turno,
+        lavador_id,
+        producto,
+        cantidad,
+        observacion || null,
+        registrado_por || null
+      ]
+    );
+
+    res.json({ message: "Entrega registrada con éxito" });
+
+  } catch (err) {
+    console.error("Error guardando entrega:", err);
+    res.status(500).json({ message: "Error guardando entrega" });
+  }
+});
+/* ==========================
    INICIAR SERVIDOR
 ========================== */
 const PORT = process.env.PORT || 3000;
