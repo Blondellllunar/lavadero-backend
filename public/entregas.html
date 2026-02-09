@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const rol = localStorage.getItem("rol");
 
-  fetch(`http://localhost:3000/lavadores?turno=${rol}`)
+  fetch(`/lavadores?turno=${rol}`)
     .then(res => res.json())
     .then(data => {
       const sel = document.getElementById("lavador");
@@ -217,7 +217,7 @@ function guardar() {
     return;
   }
 
-  fetch("http://localhost:3000/entregas", {
+  fetch("/entregas", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
