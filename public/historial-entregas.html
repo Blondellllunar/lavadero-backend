@@ -94,7 +94,7 @@ function cargar() {
   const desde = document.getElementById("desde").value;
   const hasta = document.getElementById("hasta").value;
 
-  let url = "http://localhost:3000/reporte-entregas?";
+  let url = "reporte-entregas?";
   if (desde) url += `desde=${desde}&`;
   if (hasta) url += `hasta=${hasta}&`;
   if (rol && (rol === "dia" || rol === "noche")) url += `turno=${rol}`;
