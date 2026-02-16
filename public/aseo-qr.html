@@ -39,7 +39,7 @@ button {
 <body>
 
 <div class="card">
-  <h3 id="nombre"></h3>
+  <h3 id="nombre">Cargando...</h3>
   <p id="turno"></p>
 
   <form id="formAseo">
@@ -55,14 +55,17 @@ button {
 </div>
 
 <script>
+// Obtener parámetro del QR
 const params = new URLSearchParams(window.location.search);
 const lavadorId = params.get("lavador");
 
+// Validar QR
 if (!lavadorId) {
-  document.body.innerHTML = "QR inválido";
-  throw new Error();
+  document.body.innerHTML = "<h2 style='text-align:center'>❌ QR inválido</h2>";
+  throw new Error("QR sin parámetro lavador");
 }
 
+// Cargar lavador
 fetch(`/lavadores/${lavadorId}`)
   .then(res => {
     if (!res.ok) throw new Error("Lavador no encontrado");
@@ -73,15 +76,20 @@ fetch(`/lavadores/${lavadorId}`)
     document.getElementById("turno").textContent = "Turno: " + lavador.turno;
     window.lavador = lavador;
   })
-  .catch(() => {
-    document.body.innerHTML = "❌ Error cargando el QR";
+  .catch(err => {
+    console.error(err);
+    document.body.innerHTML = "<h2 style='text-align:center'>❌ Error cargando el QR</h2>";
   });
 
+// Guardar aseo
 document.getElementById("formAseo").addEventListener("submit", e => {
   e.preventDefault();
 
   const tarea = document.querySelector("input[name=tarea]:checked");
-  if (!tarea) return alert("Seleccione una tarea");
+  if (!tarea) {
+    alert("Seleccione una tarea");
+    return;
+  }
 
   fetch("/aseo", {
     method: "POST",
@@ -92,11 +100,16 @@ document.getElementById("formAseo").addEventListener("submit", e => {
       tareas: [tarea.value]
     })
   })
-  .then(r => r.json())
-  .then(d => {
-    if (d.message) {
+  .then(res => res.json())
+  .then(data => {
+    if (data.message) {
       document.getElementById("mensajeExito").style.display = "block";
+    } else {
+      alert("No se pudo registrar");
     }
+  })
+  .catch(() => {
+    alert("Error guardando aseo");
   });
 });
 </script>
