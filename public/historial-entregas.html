@@ -94,26 +94,39 @@ const tabla = document.getElementById("tabla");
 /* ==========================
    CARGAR LAVADORES EN FILTRO
 ========================== */
-function cargarLavadoresFiltro() {
-  fetch("/lavadores")
-    .then(res => {
-      if (!res.ok) throw new Error("Error cargando lavadores");
-      return res.json();
-    })
-    .then(data => {
-      const sel = document.getElementById("lavadorFiltro");
-      sel.innerHTML = `<option value="">Todos</option>`;
+function cargar() {
+  const desde = document.getElementById("desde").value;
+  const hasta = document.getElementById("hasta").value;
+  const lavador = document.getElementById("lavadorFiltro").value;
 
-      data.forEach(l => {
-        const option = document.createElement("option");
-        option.value = l.id;
-        option.textContent = l.nombre;
-        sel.appendChild(option);
+  let url = "/reporte-entregas?";
+
+  if (desde) url += `desde=${desde}&`;
+  if (hasta) url += `hasta=${hasta}&`;
+  if (lavador) url += `lavador_id=${lavador}&`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      tabla.innerHTML = "";
+
+      if (!data.length) {
+        tabla.innerHTML = `<tr><td colspan="6">Sin registros</td></tr>`;
+        return;
+      }
+
+      data.forEach(e => {
+        tabla.innerHTML += `
+          <tr>
+            <td>${formatearFecha(e.fecha)}</td>
+            <td>${e.turno}</td>
+            <td>${e.lavador}</td>
+            <td>${e.producto}</td>
+            <td>${e.cantidad}</td>
+            <td>${e.observacion || ""}</td>
+          </tr>
+        `;
       });
-    })
-    .catch(err => {
-      console.error(err);
-      alert("No se pudieron cargar los lavadores");
     });
 }
 

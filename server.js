@@ -300,8 +300,8 @@ app.post("/entregas", async (req, res) => {
 /* ==========================
    HISTORIAL DE ENTREGAS
 ========================== */
-app.get("/reporte-entregas", async (req, res) => {
-  const { desde, hasta, turno } = req.query;
+app.get("/reporte-entregas", (req, res) => {
+  const { desde, hasta, turno, lavador_id } = req.query;
 
   let sql = `
     SELECT
@@ -333,15 +333,19 @@ app.get("/reporte-entregas", async (req, res) => {
     sql += ` AND e.turno = $${params.length}`;
   }
 
+  if (lavador_id) {
+    params.push(lavador_id);
+    sql += ` AND e.lavador_id = $${params.length}`;
+  }
+
   sql += " ORDER BY e.fecha DESC";
 
-  try {
-    const result = await db.query(sql, params);
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error reporte entregas:", err);
-    res.status(500).json({ message: "Error cargando historial" });
-  }
+  db.query(sql, params)
+    .then(result => res.json(result.rows))
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ message: "Error reporte entregas" });
+    });
 });
 /* ==========================
    ELIMINAR LAVADOR
