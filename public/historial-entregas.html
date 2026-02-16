@@ -60,6 +60,13 @@ button {
   <div class="filtros">
     <label>Desde <input type="date" id="desde"></label>
     <label>Hasta <input type="date" id="hasta"></label>
+
+    <label>Lavador
+      <select id="lavadorFiltro">
+        <option value="">Todos</option>
+      </select>
+    </label>
+
     <button onclick="verSemana()">Últimos 7 días</button>
     <button onclick="cargar()">Buscar</button>
   </div>
@@ -84,19 +91,53 @@ button {
 const rol = localStorage.getItem("rol");
 const tabla = document.getElementById("tabla");
 
-// 📅 FECHA SIN HORA
+/* ==========================
+   CARGAR LAVADORES EN FILTRO
+========================== */
+function cargarLavadoresFiltro() {
+  fetch("/lavadores")
+    .then(res => {
+      if (!res.ok) throw new Error("Error cargando lavadores");
+      return res.json();
+    })
+    .then(data => {
+      const sel = document.getElementById("lavadorFiltro");
+      sel.innerHTML = `<option value="">Todos</option>`;
+
+      data.forEach(l => {
+        const option = document.createElement("option");
+        option.value = l.id;
+        option.textContent = l.nombre;
+        sel.appendChild(option);
+      });
+    })
+    .catch(err => {
+      console.error(err);
+      alert("No se pudieron cargar los lavadores");
+    });
+}
+
+/* ==========================
+   FORMATEAR FECHA
+========================== */
 function formatearFecha(fecha) {
   const d = new Date(fecha);
   return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 }
 
+/* ==========================
+   CARGAR HISTORIAL
+========================== */
 function cargar() {
   const desde = document.getElementById("desde").value;
   const hasta = document.getElementById("hasta").value;
+  const lavador = document.getElementById("lavadorFiltro").value;
 
-  let url = "reporte-entregas?";
+  let url = "/reporte-entregas?";
+
   if (desde) url += `desde=${desde}&`;
   if (hasta) url += `hasta=${hasta}&`;
+  if (lavador) url += `lavador_id=${lavador}&`;
   if (rol && (rol === "dia" || rol === "noche")) url += `turno=${rol}`;
 
   fetch(url)
@@ -124,6 +165,9 @@ function cargar() {
     });
 }
 
+/* ==========================
+   SEMANA AUTOMÁTICA
+========================== */
 function verSemana() {
   const hoy = new Date();
   const hace7 = new Date();
@@ -131,10 +175,17 @@ function verSemana() {
 
   document.getElementById("desde").value = hace7.toISOString().split("T")[0];
   document.getElementById("hasta").value = hoy.toISOString().split("T")[0];
+
   cargar();
 }
 
-verSemana();
+/* ==========================
+   INICIO
+========================== */
+document.addEventListener("DOMContentLoaded", () => {
+  cargarLavadoresFiltro();
+  verSemana();
+});
 </script>
 
 </body>
