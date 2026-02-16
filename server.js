@@ -163,10 +163,11 @@ app.get("/lavadores/:id/qr", async (req, res) => {
       return res.status(404).json({ message: "Lavador no encontrado" });
     }
 
-    const BASE_URL =
-      process.env.BASE_URL || "https://lavadero-backend-lbol.onrender.com";
+    // URL dinámica real del servidor
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-    const url = `${BASE_URL}/aseo-qr.html?lavador=${id}`;
+    const url = `${baseUrl}/aseo-qr.html?lavador=${id}`;
+
     const qr = await QRCode.toDataURL(url);
 
     res.json({ qr, url });
