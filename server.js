@@ -212,7 +212,49 @@ app.post("/aseo", async (req, res) => {
     res.status(500).json({ message: "Error guardando aseo" });
   }
 });
+/* ==========================
+   REPORTE DE ASEO
+========================== */
+app.get("/reporte-aseo", async (req, res) => {
 
+  const { desde, hasta, turno } = req.query;
+
+  if (!desde || !hasta) {
+    return res.status(400).json({ message: "Fechas requeridas" });
+  }
+
+  try {
+
+    let sql = `
+      SELECT 
+        a.fecha,
+        l.nombre AS lavador,
+        l.turno,
+        a.tareas
+      FROM aseo a
+      JOIN lavadores l ON a.lavador_id = l.id
+      WHERE a.fecha BETWEEN $1 AND $2
+    `;
+
+    const params = [desde, hasta];
+
+    if (turno) {
+      sql += " AND l.turno = $3";
+      params.push(turno);
+    }
+
+    sql += " ORDER BY l.nombre, a.fecha";
+
+    const result = await db.query(sql, params);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error("❌ Error reporte aseo:", err);
+    res.status(500).json({ message: "Error generando reporte" });
+  }
+
+});
 /* ==========================
    INICIAR SERVIDOR
 ========================== */
