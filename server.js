@@ -345,6 +345,63 @@ app.post("/entregas", async (req, res) => {
 
 });
 /* ==========================
+   REPORTE DE ENTREGAS
+========================== */
+app.get("/reporte-entregas", async (req, res) => {
+
+  const { desde, hasta, lavador_id, turno } = req.query;
+
+  try {
+
+    let sql = `
+      SELECT
+        e.fecha,
+        e.turno,
+        l.nombre AS lavador,
+        e.producto,
+        e.cantidad,
+        e.observacion
+      FROM entregas e
+      JOIN lavadores l ON l.id = e.lavador_id
+      WHERE 1=1
+    `;
+
+    const params = [];
+    let i = 1;
+
+    if (desde) {
+      sql += ` AND e.fecha >= $${i++}`;
+      params.push(desde);
+    }
+
+    if (hasta) {
+      sql += ` AND e.fecha <= $${i++}`;
+      params.push(hasta);
+    }
+
+    if (lavador_id) {
+      sql += ` AND e.lavador_id = $${i++}`;
+      params.push(lavador_id);
+    }
+
+    if (turno) {
+      sql += ` AND e.turno = $${i++}`;
+      params.push(turno);
+    }
+
+    sql += ` ORDER BY e.fecha DESC`;
+
+    const result = await db.query(sql, params);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error("❌ Error reporte entregas:", err);
+    res.status(500).json({ message: "Error obteniendo entregas" });
+  }
+
+});
+/* ==========================
    INICIAR SERVIDOR
 ========================== */
 const PORT = process.env.PORT || 3000;
