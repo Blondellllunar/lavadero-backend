@@ -256,6 +256,49 @@ app.get("/reporte-aseo", async (req, res) => {
 
 });
 /* ==========================
+   QUIEN NO HIZO ASEO
+========================== */
+app.get("/aseo-faltante", async (req, res) => {
+
+  const { fecha, turno } = req.query;
+
+  if (!fecha) {
+    return res.status(400).json({ message: "Fecha requerida" });
+  }
+
+  try {
+
+    let sql = `
+      SELECT l.id, l.nombre, l.turno
+      FROM lavadores l
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM aseo a
+        WHERE a.lavador_id = l.id
+        AND a.fecha = $1
+      )
+    `;
+
+    const params = [fecha];
+
+    if (turno) {
+      sql += " AND l.turno = $2";
+      params.push(turno);
+    }
+
+    sql += " ORDER BY l.nombre";
+
+    const result = await db.query(sql, params);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error("❌ Error aseo faltante:", err);
+    res.status(500).json({ message: "Error consultando aseo faltante" });
+  }
+
+});
+/* ==========================
    INICIAR SERVIDOR
 ========================== */
 const PORT = process.env.PORT || 3000;

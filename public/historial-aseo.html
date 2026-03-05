@@ -106,7 +106,9 @@ th {
         <option value="noche">Noche</option>
       </select>
     </label>
+    <button onclick="verFaltantes()">Ver quién no hizo aseo hoy</button>
 
+<div id="faltantes"></div>
     <button onclick="verSemana()">Semana actual</button>
     <button onclick="cargar()">Ver</button>
   </div>
@@ -114,7 +116,34 @@ th {
   <div id="contenido"></div>
 
 </div>
+<script>
 
+function verFaltantes() {
+
+  const hoy = new Date().toISOString().split("T")[0];
+
+  fetch(`/aseo-faltante?fecha=${hoy}`)
+    .then(r => r.json())
+    .then(data => {
+
+      const div = document.getElementById("faltantes");
+
+      if (!data.length) {
+        div.innerHTML = "<p>✅ Todos hicieron aseo hoy</p>";
+        return;
+      }
+
+      div.innerHTML = `
+        <h3>⚠️ No registraron aseo hoy</h3>
+        <ul>
+          ${data.map(l => `<li>${l.nombre} (${l.turno})</li>`).join("")}
+        </ul>
+      `;
+
+    });
+
+}
+</script>
 <script>
 // 🔒 Solo admin
 if (localStorage.getItem("rol") !== "admin") {
