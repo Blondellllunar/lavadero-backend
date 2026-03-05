@@ -223,7 +223,7 @@ function render(data, desde, hasta) {
             <tr>
               ${fechas.map(f => {
                 const dia = f.toISOString().split("T")[0];
-                const r = registros.find(x => x.fecha === dia);
+                const r = registros.find(x => x.fecha.startsWith(dia));
                 if (!r) return `<td class="vacio">—</td>`;
                 const tareas = Array.isArray(r.tareas)
                   ? r.tareas
